@@ -6,6 +6,11 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Security.Cryptography.X509Certificates;
 using System.Threading.Tasks;
+
+using Azure.Security.KeyVault.Certificates;
+using Azure.Security.KeyVault.Keys;
+using Azure.Security.KeyVault.Secrets;
+
 using Microsoft.Azure.KeyVault;
 using Microsoft.Azure.KeyVault.Models;
 using Microsoft.Azure.Services.AppAuthentication;
@@ -58,13 +63,13 @@ namespace Skoruba.Duende.IdentityServer.Shared.Configuration.Services
         /// Build KeyVaultClient according to authentication method
         /// </summary>
         /// <returns></returns>
-        public IKeyVaultClient BuildKeyVaultClient()
+        public KeyClient BuildKeyVaultClient()
         {
-            IKeyVaultClient keyVaultClient;
+            KeyClient keyVaultClient;
 
             if (_azureKeyVaultConfiguration.UseClientCredentials)
             {
-                keyVaultClient = new KeyVaultClient(async (authority, resource, scope) =>
+                keyVaultClient = new KeyClient(async (authority, resource, scope) =>
                 {
                     var adCredential = new ClientCredential(_azureKeyVaultConfiguration.ClientId, _azureKeyVaultConfiguration.ClientSecret);
                     var authenticationContext = new AuthenticationContext(authority, null);
@@ -74,7 +79,7 @@ namespace Skoruba.Duende.IdentityServer.Shared.Configuration.Services
             else
             {
                 var azureServiceTokenProvider = new AzureServiceTokenProvider();
-                keyVaultClient = new KeyVaultClient(new KeyVaultClient.AuthenticationCallback(azureServiceTokenProvider.KeyVaultTokenCallback));
+                keyVaultClient = new KeyClient(new KeyVaultClient.AuthenticationCallback(azureServiceTokenProvider.KeyVaultTokenCallback));
             }
 
             return keyVaultClient;
@@ -92,7 +97,7 @@ namespace Skoruba.Duende.IdentityServer.Shared.Configuration.Services
               .ToList();
         }
 
-        private async Task<X509Certificate2> GetCertificateAsync(string identifier, IKeyVaultClient keyVaultClient)
+        private async Task<X509Certificate2> GetCertificateAsync(string identifier, CertificateClient keyVaultClient)
         {
             var certificateVersionBundle = await keyVaultClient.GetCertificateAsync(identifier);
             var certificatePrivateKeySecretBundle = await keyVaultClient.GetSecretAsync(certificateVersionBundle.SecretIdentifier.Identifier);

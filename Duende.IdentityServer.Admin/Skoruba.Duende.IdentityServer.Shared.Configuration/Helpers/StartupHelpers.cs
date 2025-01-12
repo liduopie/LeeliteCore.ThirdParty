@@ -2,17 +2,20 @@
 // Licensed under the Apache License, Version 2.0.
 
 using System;
+
+using Azure.Extensions.AspNetCore.Configuration.Secrets;
 using Azure.Identity;
+using Azure.Security.KeyVault.Secrets;
+
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.DataProtection.EntityFrameworkCore;
 using Microsoft.AspNetCore.Identity.UI.Services;
-using Microsoft.Azure.KeyVault;
-using Microsoft.Azure.Services.AppAuthentication;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
-using Microsoft.Extensions.Configuration.AzureKeyVault;
 using Microsoft.Extensions.DependencyInjection;
+
 using SendGrid;
+
 using Skoruba.Duende.IdentityServer.Shared.Configuration.Configuration.Common;
 using Skoruba.Duende.IdentityServer.Shared.Configuration.Configuration.Email;
 using Skoruba.Duende.IdentityServer.Shared.Configuration.Email;
@@ -90,17 +93,18 @@ namespace Skoruba.Duende.IdentityServer.Shared.Configuration.Helpers
                 {
                     if (azureKeyVaultConfiguration.UseClientCredentials)
                     {
-                        configurationBuilder.AddAzureKeyVault(azureKeyVaultConfiguration.AzureKeyVaultEndpoint,
-                            azureKeyVaultConfiguration.ClientId, azureKeyVaultConfiguration.ClientSecret);
+                        var uri = new Uri(azureKeyVaultConfiguration.AzureKeyVaultEndpoint);
+                        var tokenCredential = new ClientSecretCredential(azureKeyVaultConfiguration.TenantId,
+                                                       azureKeyVaultConfiguration.ClientId, azureKeyVaultConfiguration.ClientSecret);
+
+                        configurationBuilder.AddAzureKeyVault(uri, tokenCredential);
                     }
                     else
                     {
-                        var keyVaultClient = new KeyVaultClient(
-                            new KeyVaultClient.AuthenticationCallback(new AzureServiceTokenProvider()
-                                .KeyVaultTokenCallback));
+                        var secretClient = new SecretClient(new Uri(azureKeyVaultConfiguration.AzureKeyVaultEndpoint), new DefaultAzureCredential());
+                        var keyVaultSecretManager = new KeyVaultSecretManager();
 
-                        configurationBuilder.AddAzureKeyVault(azureKeyVaultConfiguration.AzureKeyVaultEndpoint,
-                            keyVaultClient, new DefaultKeyVaultSecretManager());
+                        configurationBuilder.AddAzureKeyVault(secretClient, keyVaultSecretManager);
                     }
                 }
             }
